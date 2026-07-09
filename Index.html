@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apex Prototype site</title>
     <style>
-   
         :root {
             --bg-color: #E6E6E6;
             --sidebar-border: #BDBDBD;
@@ -58,7 +57,6 @@
             from { opacity: 0; transform: scale(0.95) translateY(10px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
-
 
         .sidebar {
             width: var(--sidebar-width);
@@ -211,7 +209,7 @@
             border-radius: 16px;
             padding: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            display: none; /* Скрыто по умолчанию */
+            display: none;
             flex-direction: column;
             gap: 4px;
             z-index: 100;
@@ -338,7 +336,6 @@
             transform: translateX(0) scale(0.95);
         }
 
-       
         .empty-page-content {
             margin-top: 100px;
             display: flex;
@@ -530,6 +527,9 @@
             stroke-linejoin: round;
         }
     </style>
+    
+    <!-- Подключение библиотеки Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -585,7 +585,7 @@
         </div>
 
         <div class="profile-popup" id="profilePopup">
-            <div class="popup-item">
+            <div class="popup-item" data-action="settings">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 My Account
             </div>
@@ -689,28 +689,41 @@
         </div>
 
         
+        <!-- НОВОЕ МЕНЮ НАСТРОЕК (ЗДЕСЬ ТЕПЕРЬ ФОРМА РЕГИСТРАЦИИ) -->
         <div id="view-settings" class="page-view">
             <button class="btn-back" onclick="app.switchView('home')">
                 <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                 Back to Main
             </button>
-            <div class="empty-page-content">
-                <div class="empty-page-title">System Settings</div>
-                <p>Preferences and configuration options.</p>
+            <div class="empty-page-content" style="gap: 12px; display: flex; flex-direction: column; width: 280px; margin-top: 60px;">
+                <div class="empty-page-title">Аккаунт Supabase</div>
+                
+                <input type="email" id="authEmail" placeholder="Email" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 100%;">
+                <input type="password" id="authPassword" placeholder="Пароль" style="padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 100%;">
+                
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <button id="btnSignUp" style="flex: 1; padding: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer;">Регистрация</button>
+                    <button id="btnSignIn" style="flex: 1; padding: 10px; background: #B0B0B0; color: black; border: none; border-radius: 8px; cursor: pointer;">Вход</button>
+                </div>
             </div>
         </div>
 
     </main>
 
     
-    <script>
+   <script>
+
+        const supabaseUrl = 'https://ojfrzpnsmgjtylqcwdbo.supabase.co'; 
+        const supabaseKey = 'sb_publishable_0Xm2EbveDKyUD4o_wwk8Zw_c9-VfZP4'; 
+       
+
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
         const app = {
             views: document.querySelectorAll('.page-view'),
             navBtns: document.querySelectorAll('.nav-btn'),
             profileBtn: document.getElementById('profileBtn'),
             profilePopup: document.getElementById('profilePopup'),
-            
             
             textarea: document.getElementById('mainTextarea'),
             sendBtn: document.getElementById('sendBtn'),
@@ -721,20 +734,20 @@
 
             init() {
                 this.bindEvents();
+                this.loadMockData(); 
             },
 
             bindEvents() {
-                
                 document.querySelectorAll('[data-action]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const action = btn.getAttribute('data-action');
                         if (['home', 'updates', 'projects', 'artifacts', 'settings'].includes(action)) {
                             this.switchView(action);
+                            this.profilePopup.classList.remove('active');
                         }
                     });
                 });
 
-                
                 this.profileBtn.addEventListener('click', (e) => {
                     e.stopPropagation(); 
                     this.profilePopup.classList.toggle('active');
@@ -749,23 +762,14 @@
                 this.sendBtn.addEventListener('click', () => this.handleLocalMessage());
                 
                 this.enhanceBtn.addEventListener('click', () => {
-                    
                     const text = this.textarea.value.trim();
-                    if (!text) {
-                        const oldPh = this.textarea.placeholder;
-                        this.textarea.placeholder = "Сначала напишите что-нибудь...";
-                        setTimeout(() => this.textarea.placeholder = oldPh, 2000);
-                        return;
-                    }
-                    this.textarea.value = text + " (enhanced locally, AI disabled)";
+                    if (!text) return;
+                    this.textarea.value = "🚀 [Улучшено]: " + text + ". Распиши подробно, с примерами кода и структурировано.";
                 });
 
-                
                 this.textarea.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        this.sendBtn.style.transform = 'scale(0.9)';
-                        setTimeout(() => this.sendBtn.style.transform = '', 150);
                         this.handleLocalMessage();
                     }
                 });
@@ -778,36 +782,100 @@
                         this.style.height = '45px';
                     }
                 });
+
+                
+                document.getElementById('btnSignUp').addEventListener('click', async () => {
+                    const email = document.getElementById('authEmail').value;
+                    const password = document.getElementById('authPassword').value;
+                    if(!email || !password) return alert('Введите почту и пароль!');
+                    
+                    const { user, error } = await supabaseClient.auth.signUp({ email, password });
+                    if (error) alert('Ошибка: ' + error.message);
+                    else alert('Успешная регистрация! Если выключил Confirm Email, можно сразу входить.');
+                });
+
+                document.getElementById('btnSignIn').addEventListener('click', async () => {
+                    const email = document.getElementById('authEmail').value;
+                    const password = document.getElementById('authPassword').value;
+                    if(!email || !password) return alert('Введите почту и пароль!');
+                    
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) alert('Ошибка входа: ' + error.message);
+                    else alert('Успешный вход! Вы авторизованы.');
+                });
             },
 
             switchView(viewId) {
-
                 this.views.forEach(v => v.classList.remove('active'));
-                
                 this.navBtns.forEach(btn => btn.classList.remove('active'));
 
-                
                 const targetView = document.getElementById('view-' + viewId);
                 if (targetView) targetView.classList.add('active');
 
-            
                 const targetBtn = document.querySelector(`.nav-btn[data-action="${viewId}"]`);
                 if (targetBtn) targetBtn.classList.add('active');
             },
 
+            loadMockData() {
+              
+                document.getElementById('view-updates').innerHTML = `
+                    <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                    <div class="empty-page-content" style="margin-top: 60px; max-width: 500px; text-align: left;">
+                        <div class="empty-page-title">Журнал обновлений (v1.1)</div>
+                        <div style="background: #CFCFCF; padding: 15px; border-radius: 12px; margin-bottom: 10px; width: 100%;">
+                            <strong style="color: #222;">v1.1 — Оживление ИИ и вкладок</strong><br>
+                            <span style="font-size: 12px; color: #5E5E5E;">Сегодня</span>
+                            <p style="margin-top: 5px; font-size: 13px;">Подключили локальный движок ответов ИИ, заполнили разделы проектов и артефактов. Исправлен баг с зависанием "Думаю...".</p>
+                        </div>
+                        <div style="background: #D1D1D1; padding: 15px; border-radius: 12px; width: 100%; opacity: 0.7;">
+                            <strong style="color: #222;">v1.0 — Интеграция базы данных</strong><br>
+                            <span style="font-size: 12px; color: #5E5E5E;">Вчера</span>
+                            <p style="margin-top: 5px; font-size: 13px;">Успешно развернута база данных Supabase. Добавлена полноценная система регистрации и логина пользователей через форму в аккаунте.</p>
+                        </div>
+                    </div>
+                `;
+
+                
+                document.getElementById('view-projects').innerHTML = `
+                    <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                    <div class="empty-page-content" style="margin-top: 60px; text-align: left; width: 100%; max-width: 600px;">
+                        <div class="empty-page-title">Мои Проекты</div>
+                        <p style="color: #5E5E5E; margin-bottom: 20px;">Здесь будут храниться ваши рабочие пространства.</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%;">
+                            <div style="border: 2px dashed #BDBDBD; padding: 20px; border-radius: 16px; text-align: center; cursor: pointer;">
+                                <span style="font-size: 24px;">+</span><br><b>Создать проект</b>
+                            </div>
+                            <div style="background: #CFCFCF; padding: 20px; border-radius: 16px;">
+                                <h3>Apex Prototype</h3>
+                                <p style="font-size: 12px; color: #5E5E5E; margin-top: 5px;">Текущий активный проект ИИ-ассистента. Подключен к Supabase.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('view-artifacts').innerHTML = `
+                    <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                    <div class="empty-page-content" style="margin-top: 60px; text-align: left; width: 100%; max-width: 500px;">
+                        <div class="empty-page-title">Артефакты (Генерации)</div>
+                        <p style="color: #5E5E5E; margin-bottom: 15px;">Сюда складываются сгенерированные ИИ файлы, куски кода и документы.</p>
+                        <div style="background: #CFCFCF; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; width: 100%;">
+                            // Пока тут пусто, но скоро здесь будут скрипты!
+                        </div>
+                    </div>
+                `;
+            },
+
             
-            handleLocalMessage() {
+            async handleLocalMessage() {
                 const text = this.textarea.value.trim();
                 if (!text) return;
 
-                
                 if (this.welcomeScreen.style.display !== 'none') {
                     this.welcomeScreen.style.display = 'none';
                     this.chatHistory.style.display = 'flex';
                     this.inputContainer.classList.add('chat-active');
                 }
 
-                
                 this.textarea.value = '';
                 this.textarea.style.height = '45px';
 
@@ -815,14 +883,45 @@
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'chat-message user';
                 msgDiv.textContent = text; 
-                
                 this.chatHistory.appendChild(msgDiv);
                 this.chatHistory.scrollTop = this.chatHistory.scrollHeight;
 
+                const aiMsgDiv = document.createElement('div');
+                aiMsgDiv.className = 'chat-message'; 
+                aiMsgDiv.style.background = '#FFFFFF'; 
+                aiMsgDiv.textContent = 'Думаю...';
+                this.chatHistory.appendChild(aiMsgDiv);
+                this.chatHistory.scrollTop = this.chatHistory.scrollHeight;
+
+                try {
+      
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: text })
+                    });
+                    
+                    if (!response.ok) throw new Error('Локальный сервер не найден');
+                    const data = await response.json();
+                    aiMsgDiv.textContent = data.reply;
+
+                } catch (error) {
+              
+                    setTimeout(() => {
+                        let lowerText = text.toLowerCase();
+                        if (lowerText.includes('нахуй') || lowerText.includes('блять')) {
+                            aiMsgDiv.textContent = "Сам иди нахуй! Ладно, шучу. Я пока работаю в тестовом автономном режиме, так как сервер /api/chat еще не запущен. Но твой интерфейс работает идеально!";
+                        } else if (lowerText.includes('привет')) {
+                            aiMsgDiv.textContent = "Привет! Я твой локальный ИИ-ассистент. Твой фронтенд готов, база Supabase подключена, кнопки работают!";
+                        } else {
+                            aiMsgDiv.textContent = `Я принял твой запрос: "${text}". Настоящий искусственный интеллект подключится, когда мы развернем бэкенд-сервер на Vercel или добавим API-ключ Gemini/OpenAI!`;
+                        }
+                        this.chatHistory.scrollTop = this.chatHistory.scrollHeight;
+                    }, 1000); 
+                }
             }
         };
 
-    
         document.addEventListener('DOMContentLoaded', () => {
             app.init();
         });

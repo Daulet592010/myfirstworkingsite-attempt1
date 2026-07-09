@@ -732,110 +732,23 @@
             chatHistory: document.getElementById('chatHistory'),
             inputContainer: document.getElementById('inputContainer'),
 
-            init() {
+          init() {
                 this.bindEvents();
                 this.loadMockData(); 
+                this.loadRealUpdates(); // Запускаем загрузку реальных новостей из базы
             },
 
             bindEvents() {
-                document.querySelectorAll('[data-action]').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const action = btn.getAttribute('data-action');
-                        if (['home', 'updates', 'projects', 'artifacts', 'settings'].includes(action)) {
-                            this.switchView(action);
-                            this.profilePopup.classList.remove('active');
-                        }
-                    });
-                });
-
-                this.profileBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    this.profilePopup.classList.toggle('active');
-                });
-
-                document.addEventListener('click', (e) => {
-                    if (!this.profilePopup.contains(e.target) && !this.profileBtn.contains(e.target)) {
-                        this.profilePopup.classList.remove('active');
-                    }
-                });
-
-                this.sendBtn.addEventListener('click', () => this.handleLocalMessage());
-                
-                this.enhanceBtn.addEventListener('click', () => {
-                    const text = this.textarea.value.trim();
-                    if (!text) return;
-                    this.textarea.value = "🚀 [Улучшено]: " + text + ". Распиши подробно, с примерами кода и структурировано.";
-                });
-
-                this.textarea.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.handleLocalMessage();
-                    }
-                });
-
-                this.textarea.addEventListener('input', function() {
-                    if(this.scrollHeight > 45 && this.scrollHeight < 150) {
-                        this.style.height = 'auto';
-                        this.style.height = (this.scrollHeight) + 'px';
-                    } else if (this.value === '') {
-                        this.style.height = '45px';
-                    }
-                });
-
-                
-                document.getElementById('btnSignUp').addEventListener('click', async () => {
-                    const email = document.getElementById('authEmail').value;
-                    const password = document.getElementById('authPassword').value;
-                    if(!email || !password) return alert('Введите почту и пароль!');
-                    
-                    const { user, error } = await supabaseClient.auth.signUp({ email, password });
-                    if (error) alert('Ошибка: ' + error.message);
-                    else alert('Успешная регистрация! Если выключил Confirm Email, можно сразу входить.');
-                });
-
-                document.getElementById('btnSignIn').addEventListener('click', async () => {
-                    const email = document.getElementById('authEmail').value;
-                    const password = document.getElementById('authPassword').value;
-                    if(!email || !password) return alert('Введите почту и пароль!');
-                    
-                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                    if (error) alert('Ошибка входа: ' + error.message);
-                    else alert('Успешный вход! Вы авторизованы.');
-                });
+                // ... тут твой старый код bindEvents, его не трогаем ...
             },
 
             switchView(viewId) {
-                this.views.forEach(v => v.classList.remove('active'));
-                this.navBtns.forEach(btn => btn.classList.remove('active'));
-
-                const targetView = document.getElementById('view-' + viewId);
-                if (targetView) targetView.classList.add('active');
-
-                const targetBtn = document.querySelector(`.nav-btn[data-action="${viewId}"]`);
-                if (targetBtn) targetBtn.classList.add('active');
+                // ... тут твой старый код switchView, его не трогаем ...
             },
 
+            // Очистили эту функцию от старого хардкода обновлений
             loadMockData() {
-              
-                document.getElementById('view-updates').innerHTML = `
-                    <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
-                    <div class="empty-page-content" style="margin-top: 60px; max-width: 500px; text-align: left;">
-                        <div class="empty-page-title">Журнал обновлений (v1.1)</div>
-                        <div style="background: #CFCFCF; padding: 15px; border-radius: 12px; margin-bottom: 10px; width: 100%;">
-                            <strong style="color: #222;">v1.1 — Оживление ИИ и вкладок</strong><br>
-                            <span style="font-size: 12px; color: #5E5E5E;">Сегодня</span>
-                            <p style="margin-top: 5px; font-size: 13px;">Подключили локальный движок ответов ИИ, заполнили разделы проектов и артефактов. Исправлен баг с зависанием "Думаю...".</p>
-                        </div>
-                        <div style="background: #D1D1D1; padding: 15px; border-radius: 12px; width: 100%; opacity: 0.7;">
-                            <strong style="color: #222;">v1.0 — Интеграция базы данных</strong><br>
-                            <span style="font-size: 12px; color: #5E5E5E;">Вчера</span>
-                            <p style="margin-top: 5px; font-size: 13px;">Успешно развернута база данных Supabase. Добавлена полноценная система регистрации и логина пользователей через форму в аккаунте.</p>
-                        </div>
-                    </div>
-                `;
-
-                
+                // Проекты
                 document.getElementById('view-projects').innerHTML = `
                     <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
                     <div class="empty-page-content" style="margin-top: 60px; text-align: left; width: 100%; max-width: 600px;">
@@ -853,6 +766,7 @@
                     </div>
                 `;
 
+                // Артефакты
                 document.getElementById('view-artifacts').innerHTML = `
                     <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
                     <div class="empty-page-content" style="margin-top: 60px; text-align: left; width: 100%; max-width: 500px;">
@@ -863,6 +777,62 @@
                         </div>
                     </div>
                 `;
+            },
+
+            // НОВАЯ ФУНКЦИЯ: Тянет данные прямиком из Supabase
+            async loadRealUpdates() {
+                const container = document.getElementById('view-updates');
+                
+                // Пока данные подгружаются, покажем красивый лоадер
+                container.innerHTML = `
+                    <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                    <div class="empty-page-content" style="margin-top: 60px; max-width: 500px; text-align: left;">
+                        <div class="empty-page-title">Журнал обновлений</div>
+                        <p style="color: #5E5E5E;">Загрузка данных из базы...</p>
+                    </div>
+                `;
+
+                try {
+                    // Делаем запрос к таблице 'updates' и сортируем по дате (свежие вверху)
+                    const { data: updates, error } = await supabaseClient
+                        .from('updates')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+
+                    // Начинаем собирать HTML
+                    let htmlContent = `
+                        <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                        <div class="empty-page-content" style="margin-top: 60px; max-width: 500px; text-align: left;">
+                            <div class="empty-page-title">Журнал обновлений (${updates[0]?.version || 'v1.0'})</div>
+                    `;
+
+                    // Циклом перебираем все строки из базы и превращаем в карточки
+                    updates.forEach(item => {
+                        const date = new Date(item.created_at).toLocaleDateString('ru-RU');
+                        htmlContent += `
+                            <div style="background: #CFCFCF; padding: 15px; border-radius: 12px; margin-bottom: 10px; width: 100%;">
+                                <strong style="color: #222;">${item.version} — ${item.title}</strong><br>
+                                <span style="font-size: 12px; color: #5E5E5E;">${date}</span>
+                                <p style="margin-top: 5px; font-size: 13px;">${item.description}</p>
+                            </div>
+                        `;
+                    });
+
+                    htmlContent += `</div>`;
+                    container.innerHTML = htmlContent;
+
+                } catch (error) {
+                    console.error('Ошибка бэкенда:', error);
+                    container.innerHTML = `
+                        <button class="btn-back" onclick="app.switchView('home')">← Назад</button>
+                        <div class="empty-page-content" style="margin-top: 60px; max-width: 500px; text-align: left;">
+                            <div class="empty-page-title" style="color: red;">Ошибка загрузки</div>
+                            <p>Не удалось подключиться к Supabase: ${error.message}</p>
+                        </div>
+                    `;
+                }
             },
 
             
